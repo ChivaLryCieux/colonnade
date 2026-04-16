@@ -66,6 +66,13 @@ h1 {
   line-height: 0.92;
 }
 
+h1 span {
+  display: block;
+  margin-top: 14px;
+  font-size: 42px;
+  line-height: 1.05;
+}
+
 h2 {
   margin-top: 10px;
   font-size: 40px;
@@ -76,6 +83,10 @@ h2 {
   h1 {
     font-size: 44px;
     line-height: 0.96;
+  }
+
+  h1 span {
+    font-size: 28px;
   }
 
   h2 {
