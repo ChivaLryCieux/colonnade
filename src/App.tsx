@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useAccount, useBalance, useBlockNumber, useConnect, useDisconnect, useGasPrice } from 'wagmi'
+import { useAccount, useBalance, useBlock, useBlockNumber, useConnect, useDisconnect, useGasPrice } from 'wagmi'
 import { formatEther, formatGwei } from 'viem'
 import { BlockChart } from './components/BlockChart'
 import { useRecentBlocks } from './hooks/useRecentBlocks'
@@ -12,6 +12,17 @@ type MetricCard = {
   hint: string
 }
 
+function formatBlockTimestamp(timestamp?: bigint) {
+  if (!timestamp) {
+    return '同步中'
+  }
+
+  return new Date(Number(timestamp) * 1000).toLocaleString('zh-CN', {
+    hour12: false,
+    timeZoneName: 'short',
+  })
+}
+
 function App() {
   const { address, isConnected, chain } = useAccount()
   const { connectors, connect, isPending } = useConnect()
@@ -19,6 +30,14 @@ function App() {
   const { data: blockNumber } = useBlockNumber({ watch: true })
   const { data: gasPrice } = useGasPrice({ query: { refetchInterval: 12_000 } })
   const { data: balance } = useBalance({ address, query: { enabled: Boolean(address) } })
+  const { data: latestBlock, isLoading: isBlockLoading } = useBlock({
+    blockTag: 'latest',
+    includeTransactions: true,
+    watch: true,
+    query: {
+      refetchInterval: 12_000,
+    },
+  })
   const blocks = useRecentBlocks(blockNumber)
 
   const metricCards = useMemo<MetricCard[]>(
@@ -41,6 +60,24 @@ function App() {
     ],
     [address, balance, blockNumber, chain?.name, gasPrice],
   )
+
+  const transactions = useMemo(() => {
+    if (!latestBlock || latestBlock.transactions.length === 0) {
+      return [] as Array<{ hash: `0x${string}`; to: `0x${string}` | null; value: bigint }>
+    }
+
+    const normalized: Array<{ hash: `0x${string}`; to: `0x${string}` | null; value: bigint }> = []
+
+    for (const tx of latestBlock.transactions) {
+      if (typeof tx === 'string') {
+        normalized.push({ hash: tx, to: null, value: 0n })
+      } else {
+        normalized.push({ hash: tx.hash, to: tx.to, value: tx.value })
+      }
+    }
+
+    return normalized
+  }, [latestBlock])
 
   return (
     <main>
@@ -103,6 +140,54 @@ function App() {
           <span>
             <i className="line-key" />Gas 使用率
           </span>
+        </div>
+      </section>
+
+      <section className="block-details" aria-live="polite">
+        <div className="section-heading">
+          <p className="eyebrow">useBlock Deep Dive</p>
+          <h2>最新区块详情</h2>
+        </div>
+
+        <div className="details-grid">
+          <article>
+            <span>区块高度</span>
+            <strong>{latestBlock?.number ? formatBlockNumber(latestBlock.number) : '同步中'}</strong>
+            <small>实时 latest blockTag</small>
+          </article>
+          <article>
+            <span>区块时间</span>
+            <strong>{formatBlockTimestamp(latestBlock?.timestamp)}</strong>
+            <small>链上 Unix Timestamp</small>
+          </article>
+          <article>
+            <span>交易数量</span>
+            <strong>{latestBlock?.transactions.length ?? 0}</strong>
+            <small>includeTransactions: true</small>
+          </article>
+        </div>
+
+        <div className="hash-panel">
+          <p className="panel-label">Block Hash</p>
+          <code>{latestBlock?.hash ?? (isBlockLoading ? '加载中...' : '暂无数据')}</code>
+        </div>
+
+        <div className="tx-list-panel">
+          <div className="tx-list-heading">
+            <p className="panel-label">Transactions Snapshot</p>
+            <small>展示前 10 条，观察链上实际存储的交易哈希、接收方与转账值</small>
+          </div>
+          <ol>
+            {transactions.slice(0, 10).map((tx, index) => (
+              <li key={tx.hash}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <code>{tx.hash}</code>
+                <strong>{tx.to ? shortAddress(tx.to) : 'Contract Creation'}</strong>
+                <em>{Number(formatEther(tx.value)).toFixed(5)} ETH</em>
+              </li>
+            ))}
+          </ol>
+          {transactions.length === 0 && <p className="empty-note">当前区块暂无交易或仍在同步中。</p>}
         </div>
       </section>
     </main>
