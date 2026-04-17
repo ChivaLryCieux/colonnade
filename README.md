@@ -101,10 +101,20 @@ npm run lint
 
 ```txt
 src/
-  App.tsx       DApp 主界面、钱包连接、链上数据读取、D3 图表
-  App.css       页面布局和瑞士风格组件样式
-  main.tsx      Wagmi、Viem transport、React Query 初始化
-  index.css     全局设计变量、排版和基础样式
+  components/
+    BlockChart.tsx      区块活跃度图表（柱状 + 折线）
+  hooks/
+    useRecentBlocks.ts  最近区块查询与缓存刷新
+  constants/
+    mockBlocks.ts       RPC 不可用时的图表回退数据
+  utils/
+    format.ts           地址/区块号格式化工具
+  types/
+    block.ts            区块与图表数据类型
+  App.tsx               页面组装、钱包交互、指标卡片
+  App.css               页面布局和瑞士风格组件样式
+  main.tsx              Wagmi、Viem transport、React Query 初始化
+  index.css             全局设计变量、排版和基础样式
 ```
 
 ## 注意事项
