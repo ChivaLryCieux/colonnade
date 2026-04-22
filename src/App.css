@@ -5,6 +5,8 @@ main {
   border-left: 2px solid var(--border);
   border-right: 2px solid var(--border);
   background: var(--surface);
+  /* 性能优化: 启用硬件加速 */
+  will-change: auto;
 }
 
 .hero-panel {
@@ -345,6 +347,8 @@ button:disabled {
   border: 1px solid var(--grid);
   padding: 10px 12px;
   background: #fcfcfb;
+  /* 避免重排优化 */
+  contain: content;
 }
 
 .tx-list-panel li span {

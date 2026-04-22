@@ -6,6 +6,18 @@ import { mainnet, sepolia } from 'wagmi/chains'
 import './index.css'
 import App from './App.tsx'
 
+// 优化的 QueryClient 配置
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 6_000,
+      gcTime: 30_000,
+      refetchOnWindowFocus: false,
+      retry: 2,
+    },
+  },
+})
+
 const config = createConfig({
   chains: [mainnet, sepolia],
   transports: {
@@ -16,8 +28,6 @@ const config = createConfig({
     [sepolia.id]: http(),
   },
 })
-
-const queryClient = new QueryClient()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

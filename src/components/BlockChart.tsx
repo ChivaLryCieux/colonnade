@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, memo } from 'react'
 import * as d3 from 'd3'
 import type { BlockChartPoint, BlockPoint } from '../types/block'
 
@@ -18,6 +18,7 @@ const CHART_MARGIN = {
   left: 52,
 }
 
+// 提取纯函数到组件外部避免重复创建
 function toChartData(blocks: BlockPoint[]): BlockChartPoint[] {
   return blocks.map((block) => ({
     label: `#${block.number.toString().slice(-4)}`,
@@ -26,7 +27,7 @@ function toChartData(blocks: BlockPoint[]): BlockChartPoint[] {
   }))
 }
 
-export function BlockChart({ blocks }: BlockChartProps) {
+function BlockChartComponent({ blocks }: BlockChartProps) {
   const innerWidth = CHART_SIZE.width - CHART_MARGIN.left - CHART_MARGIN.right
   const innerHeight = CHART_SIZE.height - CHART_MARGIN.top - CHART_MARGIN.bottom
 
@@ -112,3 +113,17 @@ export function BlockChart({ blocks }: BlockChartProps) {
     </svg>
   )
 }
+
+// 使用 memo 优化，避免不必要的重渲染
+export const BlockChart = memo(BlockChartComponent, (prev, next) => {
+  if (prev.blocks.length !== next.blocks.length) return false
+  return prev.blocks.every((block, i) => {
+    const nextBlock = next.blocks[i]
+    return (
+      block.number === nextBlock.number &&
+      block.transactions === nextBlock.transactions &&
+      block.gasUsed === nextBlock.gasUsed &&
+      block.gasLimit === nextBlock.gasLimit
+    )
+  })
+})
