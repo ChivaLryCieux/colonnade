@@ -90,10 +90,14 @@ export function useRecentBlocks(chain: ChainType): BlockPoint[] {
       : 1n
 
     for (let i = 0; i < RECENT_BLOCK_COUNT; i++) {
+      // 为每个区块生成随机的 gasUsed 值，模拟真实的 gas 使用变化
+      const randomGasFactor = 0.6 + Math.random() * 0.8 // 0.6 到 1.4 之间的随机因子
+      const gasUsed = BigInt(Math.floor(Number(latestBlock.gasUsed) * randomGasFactor))
+
       blocks.push({
         number: startNumber + BigInt(i),
         transactions: Math.floor(latestBlock.transactions.length * (0.8 + Math.random() * 0.4)),
-        gasUsed: latestBlock.gasUsed,
+        gasUsed: gasUsed,
         gasLimit: latestBlock.gasLimit,
       })
     }

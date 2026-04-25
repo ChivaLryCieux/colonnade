@@ -25,12 +25,13 @@ function toChartData(blocks: BlockPoint[], chain: ChainType): BlockChartPoint[] 
     let secondary: number | undefined
 
     if (chain === 'eth') {
-      const gasLimit = (block as any).gasLimit
-      const gasUsed = (block as any).gasUsed
-      gasRatio = gasLimit && gasUsed ? Number(gasUsed) / Number(gasLimit) : 0
+      const ethBlock = block as { gasUsed?: bigint; gasLimit?: bigint }
+      gasRatio = ethBlock.gasLimit && ethBlock.gasUsed
+        ? Number(ethBlock.gasUsed) / Number(ethBlock.gasLimit)
+        : 0
     } else if (chain === 'btc') {
-      const size = (block as any).size
-      secondary = size ? size / 1000 : 0
+      const btcBlock = block as { size?: number }
+      secondary = btcBlock.size ? btcBlock.size / 1000 : 0
     } else if (chain === 'sol') {
       secondary = block.transactions / 10
     }

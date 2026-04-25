@@ -3,9 +3,16 @@ import { SAMPLE_BLOCKS } from '../constants/mockBlocks'
 
 const RECENT_BLOCK_COUNT = 12n
 
+interface EthBlockResponse {
+  number: bigint
+  transactions: Array<{ hash?: string; to?: string; value?: bigint }>
+  gasUsed: bigint
+  gasLimit: bigint
+}
+
 export async function fetchRecentBlocks(
   latestBlock: bigint,
-  getBlock: (params: { blockNumber: bigint }) => Promise<any>,
+  getBlock: (params: { blockNumber: bigint }) => Promise<EthBlockResponse>,
 ): Promise<BlockPoint[]> {
   const firstBlock = latestBlock > RECENT_BLOCK_COUNT ? latestBlock - RECENT_BLOCK_COUNT + 1n : 1n
   const blockNumbers = Array.from(
@@ -15,7 +22,7 @@ export async function fetchRecentBlocks(
 
   // 使用分批请求避免并发过多
   const batchSize = 4
-  const blocks: any[] = []
+  const blocks: EthBlockResponse[] = []
 
   for (let i = 0; i < blockNumbers.length; i += batchSize) {
     const batch = blockNumbers.slice(i, i + batchSize)
