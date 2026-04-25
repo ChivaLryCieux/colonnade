@@ -37,7 +37,7 @@ interface SolTransaction {
       accountKeys?: Array<string>
     }
   }
-  meta?: any
+  meta?: unknown
   version?: string | number
 }
 
@@ -47,9 +47,35 @@ interface SolBlockData {
   blockhash?: string
   parentSlot?: number
   previousBlockhash?: string
-  rewards?: any[]
-  transactions: SolTransaction[]
+  rewards?: unknown[]
+  transactions?: SolTransaction[]
   slot?: number
+}
+
+type SolSlotResponse = {
+  result?: unknown
+}
+
+type SolBlockResponse = {
+  result?: Partial<SolBlockData> | null
+}
+
+type EthTransaction =
+  | `0x${string}`
+  | {
+      hash: `0x${string}`
+      to?: `0x${string}` | null
+      value?: bigint
+    }
+
+function toSafeSlot(value: unknown): number | null {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? value
+    : null
+}
+
+function getSolTransactions(block: SolBlockData | null): SolTransaction[] {
+  return Array.isArray(block?.transactions) ? block.transactions : []
 }
 
 export function BlockDetails({ chain }: BlockDetailsProps) {
@@ -95,8 +121,8 @@ export function BlockDetails({ chain }: BlockDetailsProps) {
               method: 'getSlot',
             }),
           })
-          const slotData = await response.json()
-          const slot = slotData.result
+          const slotData = await response.json() as SolSlotResponse
+          const slot = toSafeSlot(slotData.result)
 
           if (!slot) {
             setSolBlock({
@@ -115,12 +141,15 @@ export function BlockDetails({ chain }: BlockDetailsProps) {
               params: [slot, { maxSupportedTransactionVersion: 0 }],
             }),
           })
-          const blockData = await blockResponse.json()
+          const blockData = await blockResponse.json() as SolBlockResponse
 
           if (blockData.result) {
             setSolBlock({
               ...blockData.result,
-              slot: slot
+              slot,
+              transactions: Array.isArray(blockData.result.transactions)
+                ? blockData.result.transactions
+                : [],
             })
           } else {
             setSolBlock({
@@ -142,7 +171,7 @@ export function BlockDetails({ chain }: BlockDetailsProps) {
 
   const transactions = useMemo(() => {
     if (chain === 'btc' && btcBlock) {
-      return btcBlock.tx.slice(0, 10).map((tx: BtcTransaction, _index: number) => ({
+      return btcBlock.tx.slice(0, 10).map((tx: BtcTransaction) => ({
         hash: tx.hash,
         to: tx.out[0]?.addr || null,
         value: BigInt(Math.floor((tx.out[0]?.value || 0) / 100000000)),
@@ -150,25 +179,25 @@ export function BlockDetails({ chain }: BlockDetailsProps) {
     }
 
     if (chain === 'sol' && solBlock) {
-      return solBlock.transactions.slice(0, 10).map((tx: SolTransaction, _index: number) => ({
-        hash: `0x${_index.toString(16).padStart(64, '0')}`,
-        to: tx.transaction?.message?.accountKeys?.[1] || null,
+      return getSolTransactions(solBlock).slice(0, 10).map((_: SolTransaction, index: number) => ({
+        hash: `0x${index.toString(16).padStart(64, '0')}`,
+        to: null, // Solana 地址格式不符合要求，暂时返回 null
         value: BigInt(Math.floor(Math.random() * 1000000000)),
-      }))
+      })) as Array<{ hash: `0x${string}`; to: `0x${string}` | null; value: bigint }>
     }
 
     if (!latestBlock || latestBlock.transactions.length === 0) {
       return [] as Array<{ hash: `0x${string}`; to: string | null; value: bigint }>
     }
 
-    return latestBlock.transactions.slice(0, 10).map((tx: any, _index: number) => {
+    return (latestBlock.transactions as EthTransaction[]).slice(0, 10).map((tx) => {
       if (typeof tx === 'string') {
         return { hash: tx as `0x${string}`, to: null, value: 0n }
       }
       return {
         hash: tx.hash,
-        to: tx.to,
-        value: tx.value,
+        to: tx.to ?? null,
+        value: tx.value ?? 0n,
       }
     })
   }, [latestBlock, btcBlock, solBlock, chain])
@@ -249,7 +278,7 @@ export function BlockDetails({ chain }: BlockDetailsProps) {
           </article>
           <article>
             <span>交易数量</span>
-            <strong>{solBlock?.transactions?.length ?? 0}</strong>
+            <strong>{getSolTransactions(solBlock).length}</strong>
             <small>Solana JSON RPC</small>
           </article>
         </div>
@@ -319,7 +348,7 @@ export function BlockDetails({ chain }: BlockDetailsProps) {
           <small>展示前 10 条，观察链上实际存储的交易哈希、接收方与转账值</small>
         </div>
         <ol>
-          {transactions.slice(0, 10).map((tx: any, index: number) => (
+          {transactions.slice(0, 10).map((tx, index: number) => (
             <TransactionItem
               key={tx.hash}
               index={index}

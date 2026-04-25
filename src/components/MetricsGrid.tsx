@@ -15,6 +15,22 @@ type MetricsGridProps = {
   chain: ChainType
 }
 
+type SolSlotResponse = {
+  result?: unknown
+}
+
+function toPositiveIntegerString(value: unknown): string | null {
+  if (typeof value === 'number' && Number.isSafeInteger(value) && value > 0) {
+    return value.toString()
+  }
+
+  if (typeof value === 'string' && /^\d+$/.test(value)) {
+    return value
+  }
+
+  return null
+}
+
 export function MetricsGrid({ chain }: MetricsGridProps) {
   const { address } = useAccount()
   const { data: blockNumber } = useBlockNumber({ watch: chain === 'eth' })
@@ -30,8 +46,12 @@ export function MetricsGrid({ chain }: MetricsGridProps) {
         try {
           const response = await fetch('https://blockchain.info/q/getblockcount')
           const height = await response.text()
-          setBtcMetrics(prev => ({ ...prev, height }))
+          const nextHeight = toPositiveIntegerString(height)
+          if (nextHeight) {
+            setBtcMetrics(prev => ({ ...prev, height: nextHeight }))
+          }
         } catch {
+          setBtcMetrics(prev => prev)
         }
       }
       fetchBtcMetrics()
@@ -51,9 +71,13 @@ export function MetricsGrid({ chain }: MetricsGridProps) {
               method: 'getSlot',
             }),
           })
-          const data = await response.json()
-          setSolMetrics(prev => ({ ...prev, slot: data.result.toString() }))
+          const data = await response.json() as SolSlotResponse
+          const slot = toPositiveIntegerString(data.result)
+          if (slot) {
+            setSolMetrics(prev => ({ ...prev, slot }))
+          }
         } catch {
+          setSolMetrics(prev => prev)
         }
       }
       fetchSolMetrics()
